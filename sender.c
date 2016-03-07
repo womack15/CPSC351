@@ -56,47 +56,44 @@ void send(const char* fileName)
 {
 		// Open the file argv[1] for reading 
 	FILE* fp = fopen(fileName, "r"); 
-	int msgsize=0;
-
+	 
 	// Was the file open? 
 	if(!fp)	{
 		perror("fopen");
 		exit(-1);
-	}
+	}else{printf("%s is open\n",fileName);}
 
 	  // A buffer to store message we will send to the receiver. 
-    message sendMsg;   
-    sendMsg.mtype = RECV_DONE_TYPE;  
-    sendMsg.size = 1;   
-
+    message sendMsg;
+    message revMsg;   
+    //sendMsg.mtype = 1;  
+	//revMsg=SENDER_DATA_TYPE; 
     //send message
-        if (msgsnd(msqid, &sendMsg, sizeof(message), 0) == -1) // +1 for '\0' 
-            perror("msgsnd");
+        // if (msgsnd(msqid, &sendMsg, sizeof(message), 0) == -1) // +1 for '\0' 
+             //perror("msgsnd");
+
+
 
 
  while(!feof(fp) ){
-
-
-    while(sendMsg.mtype == SENDER_DATA_TYPE){//to check if buf has something there
-      msgrcv(msqid, &sendMsg, sizeof(message), 0, 0) ;  //receive message
-    }  
-printf("I am here, msg type: %ld size:%d\n", sendMsg.mtype, sendMsg.size);
-sleep(1);
-
+ printf("i am here\n");
        //critical section
     if((sendMsg.size=fread(sharedMemPtr, 1, SHARED_MEMORY_CHUNK_SIZE, fp))<0){
 			perror("fread");
 			exit(-1);
-		}   
-    sendMsg.mtype = SENDER_DATA_TYPE;  
-    msgsnd(msqid, &sendMsg, sizeof(message), 0)  ;  
+		}  
+	
+    sendMsg.mtype = 1;  
+ //printf("%s",sharedMemPtr);
 
-//printf("I am here, msg type: %ld size:%d\n", sendMsg.mtype, sendMsg.size);
-//for(;;);
+  msgsnd(msqid, &sendMsg, sizeof(int), 0);  
 
-
-     
+ //received message will awake here.
+ msgrcv(msqid, &revMsg, sizeof(int), 2, 0);
+   
 }
+
+
 
 
 fclose(fp);

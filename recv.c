@@ -87,13 +87,11 @@ void mainLoop()
 
 
 while(msgSize!= 0)	{	   
-    while(revMsg.mtype!=SENDER_DATA_TYPE){  //if size=0, wait here
-    /*recv message*/
-         if (msgrcv(msqid, &revMsg, sizeof(message), 0, 0) == -1) {
+  /*recv message*/
+         if (msgrcv(msqid, &revMsg, sizeof(message), 1, 0) == -1) {
             perror("msgrcv");
             exit(1);
         }     
-  }
  msgSize=revMsg.size;
 printf("shared memory data size:\n %d\n",msgSize);
 
@@ -106,8 +104,8 @@ if(msgSize!=0){
 
 
 		/* We are done */
-    revMsg.mtype = RECV_DONE_TYPE;  
-    msgsnd(msqid, &revMsg, sizeof(message), 0)  ;   
+    revMsg.mtype = 2;  
+    msgsnd(msqid, &revMsg, sizeof(int), 0)  ;   
 }
 
 }
