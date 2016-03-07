@@ -123,8 +123,13 @@ void send(const char* fileName)
 
 
 
+
+
 int main(int argc, char *argv[])
 {
+
+
+
 	// Connect to shared memory and the message queue 
 	init(shmid, msqid, sharedMemPtr);
 	
@@ -133,6 +138,12 @@ int main(int argc, char *argv[])
 	
 	// Cleanup 
 	//cleanUp(shmid, msqid, sharedMemPtr);
+
+    
+    
+   
+
+
 
     return 0;
 }

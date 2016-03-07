@@ -31,7 +31,6 @@ void init(int& shmid, int& msqid, char*& sharedMemPtr)
 	/* TODO:  1. Create a file called keyfile.txt containing string "Hello world".
             2. Use ftok("keyfile.txt", 'a') in order to generate the key.
     		    3. Use the key in the below. 	 */
-    
     key_t key;
     if ((key = ftok("keyfile.txt", 'Z')) == -1)
     {
@@ -45,7 +44,7 @@ void init(int& shmid, int& msqid, char*& sharedMemPtr)
         exit(1);
     }
 
-    /* attach to the shared memory */
+     /* attach to the shared memory */
     sharedMemPtr = (char*)shmat(shmid, (void *)0, 0);
     if (sharedMemPtr == (char *)(-1))
     {
@@ -55,15 +54,19 @@ void init(int& shmid, int& msqid, char*& sharedMemPtr)
  
 
     if ((msqid = msgget(key, 0644)) == -1)
-    {   /* connect to the queue */
+    { /* connect to the queue */
         perror("msgget");
         exit(1);
     }
-    
+
+
+
 }
 
 
-/*** The main loop ***/
+/**
+ * The main loop
+ */
 void mainLoop()
 {
 	/* The size of the mesage */
@@ -93,7 +96,7 @@ void mainLoop()
 
 
     while(msgSize!= 0)
-    {   /*recv message*/
+    {/*recv message*/
         if (msgrcv(msqid, &revMsg, sizeof(message), 1, 0) == -1)
         {
             perror("msgrcv");
@@ -104,7 +107,7 @@ void mainLoop()
         printf("shared memory data size:\n %d\n",msgSize);
 
         if(msgSize!=0)
-        {   // Save the shared memory to file */
+        {// Save the shared memory to file */
 	        if(fwrite(sharedMemPtr,  sizeof(char), revMsg.size ,fp) < 0)
 	        {
 				perror("fwrite");
@@ -140,15 +143,13 @@ void cleanUp(const int& shmid, const int& msqid, void* sharedMemPtr)
 	
 	/* TODO: Deallocate the message queue */
 
-    if (msgctl(msqid, IPC_RMID, NULL) == -1)
-    {   //remove a message queue 
+    if (msgctl(msqid, IPC_RMID, NULL) == -1) {//remove a message queue 
         perror("msgctl");
         exit(1);
     }
 
     /* detach from the segment: */
-    if (shmdt(sharedMemPtr) == -1)
-    {
+    if (shmdt(sharedMemPtr) == -1) {
         perror("shmdt");
         exit(1);
     }
@@ -159,12 +160,12 @@ void cleanUp(const int& shmid, const int& msqid, void* sharedMemPtr)
 /**
  * Handles the exit signal
  * @param signal - the signal type
- **/
+ */
 
-void signalHandlerFunc(int signo)
-{
-    printf("i am signal handle\n"); 
-     
+void signalHandlerFunc(int signo){
+
+
+printf("i am signal handle\n");  
 	/* let Ctrl-C deallocate memory and message queue */
    	cleanUp(shmid, msqid, sharedMemPtr);
     exit(0);
@@ -175,7 +176,9 @@ int main(void)
 {
 
 	// Overide the default signal handler for the SIGINT signal with signalHandlerFunc
-	 			
+	 
+
+				
 	/* Initialize */
 	init(shmid, msqid, sharedMemPtr);
 	
@@ -184,7 +187,9 @@ int main(void)
 
 	signal(SIGINT, signalHandlerFunc); 
 
-    for(;;);
+for(;;);
+
+
 
     return 0;
 }
