@@ -1,3 +1,6 @@
+
+/*	g++ -o sender sender.c && ./sender  sender.txt  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -7,7 +10,7 @@
 #include <sys/msg.h>
 #include <sys/shm.h>
 
-#include "msg.h"
+
 #include <unistd.h>
 #include <signal.h>
 
@@ -15,112 +18,101 @@
 #define SHARED_MEMORY_CHUNK_SIZE 1000
 
 // The ids for the shared memory segment and the message queue 
-int shmid, msqid;
+int shmid;
  
 // The pointer to the shared memory 
-char* sharedMemPtr;
+void* sharedMemPtr;
 
-//overwrite Ctrl-c handler
+int pid,sendSize; //=11056;
 
-void init(int& shmid, int& msqid, char*& sharedMemPtr)
-{     
-    key_t key;
-    if ((key = ftok("keyfile.txt", 'Z')) == -1) 
-    {
+
+ 	FILE* fp = fopen("keyfile.txt", "r"); 
+
+
+ 
+static void sig_handler(int signum) {
+ printf("in sender signal\n");
+}
+
+void init(int& shmid,   void*& sharedMemPtr)
+{     key_t key;
+    if ((key = ftok("keyfile.txt", 'Z')) == -1) {
         perror("ftok");
-        exit(1);
-    }
-	
-	// Store the IDs and the pointer to the shared memory region in the corresponding parameters 
+        exit(1);}
+ 
+	//  Get the id of the shared memory segment. The size of the segment must be SHARED_MEMORY_CHUNK_SIZE 
 	    
-
-    // TODO: Get the id of the shared memory segment. The size of the segment must be SHARED_MEMORY_CHUNK_SIZE 
-    // Get the id of shared memory segment
-    // shmid now contains the id that points to an area of memory
-    if ((shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0644 | IPC_CREAT)) == -1) 
-    {
+    if ((shmid = shmget(key, SHARED_MEMORY_CHUNK_SIZE, 0644 | IPC_CREAT)) == -1) {
         perror("shmget");
         exit(1);
     }
 
-    
-    // TODO: Attach to the shared memory 
-    // attach the shared memory to a pointer
-    sharedMemPtr = (char*)shmat(shmid, (void *)0, 0);
-    if (sharedMemPtr == (char *)(-1)) 
-    {
+    // attach to the shared memory 
+    sharedMemPtr = (void*)shmat(shmid, (void *)0, 0);
+    if (sharedMemPtr == (char *)(-1)) {
         perror("shmat");
         exit(1);
     }
+ }
+void cleanUp(const int& shmid,  void* sharedMemPtr)
+{
+	/* TODO: Detach from shared memory */
+	
+	/* TODO: Deallocate the shared memory chunk */
 
-
-    // TODO: Attach to the message queue 
-    // Attach to the message queue 
-    if ((msqid = msgget(key, 0666 | IPC_CREAT)) == -1) 
-    {
-        perror("msgget");
+    if (shmdt(sharedMemPtr) == -1) {
+        perror("shmdt");
         exit(1);
     }
+ 
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) {//remove a message queue 
+        perror("shmctl");
+        exit(1);
+    }	
+ 
+    /* detach from the segment: */
+ 
+
+ 
+ 
+    //sharedMemPtr=NULL;
+}
+ 
+void send(const char* fileName){
+   // Open the file argv[1] for reading 
+   FILE* fp = fopen(fileName, "r"); 
+ 	 
+   //*pidPtr=getpid();pid=*pidPtr;   //save pid of recv.c
+   while(!feof(fp) ){
+    
+   if((sendSize=fread((char*)(sharedMemPtr)+4, 1, SHARED_MEMORY_CHUNK_SIZE-4, fp))<0){
+	 	      perror("fread");
+	      exit(1);
+      }
+      *((int*)sharedMemPtr) = sendSize;
+   // snprintf((char*)sharedMemPtr, sizeof(char)*4,"%d",sendSize);  
+   /* char b[5];
+    snprintf(b, 5,"%d",sendSize);
+   if((fread((char*)(sharedMemPtr), 1, 5, (char* b))<0){
+	 	      perror("fread");
+	      exit(1);
+      }  */
+  printf("shared memory size = %d \n", *((int*)sharedMemPtr));
+ 
+   if( (kill(pid,SIGUSR1))==-1 ){printf( "SIGUSR1 cannot be signal");exit(1);}   
+   sleep(2);
+ 
 
 }
+ 
+   if( (kill(pid,SIGUSR2))==-1 ){printf( "SIGUSR2 cannot be signal");exit(1);}  
+ 
 
-void send(const char* fileName)
-{
-		// Open the file argv[1] for reading 
-	FILE* fp = fopen(fileName, "r"); 
-	 
-	// Was the file open? 
-	if(!fp)	
-	{
-		perror("fopen");
-		exit(-1);
-	}
-	else
-	{
-	        printf("%s is open\n",fileName);
-	}
-
-	  // A buffer to store message we will send to the receiver. 
-    message sendMsg;
-    message revMsg;   
-    //sendMsg.mtype = 1;  
-	//revMsg=SENDER_DATA_TYPE; 
-    //send message
-        // if (msgsnd(msqid, &sendMsg, sizeof(message), 0) == -1) // +1 for '\0' 
-             //perror("msgsnd");
-
-
-
-
-    while(!feof(fp) )
-    {
-        printf("i am here\n");
-        //critical section
-        if((sendMsg.size=fread(sharedMemPtr, 1, SHARED_MEMORY_CHUNK_SIZE, fp))<0)
-        {
-            perror("fread");
-	    exit(-1);
-        }  
-	
-        sendMsg.mtype = 1;  
-        //printf("%s",sharedMemPtr);
-
-        msgsnd(msqid, &sendMsg, sizeof(int), 0);  
-
-        //received message will awake here.
-        msgrcv(msqid, &revMsg, sizeof(int), 2, 0);
-   
-    }
-
-
-
-
-    fclose(fp);
-    //it's done
-    sendMsg.size = 0;  
-    msgsnd(msqid, &sendMsg, sizeof(message), 0)  ;
-
-}
+fclose(fp); 
+printf("file closed\n");  
+if( (kill(pid,SIGINT))==-1 ){printf( "SIGINT cannot be signal");exit(1);}  
+  
+ }
 
 
 
@@ -128,17 +120,29 @@ void send(const char* fileName)
 
 int main(int argc, char *argv[])
 {
+   // signal(SIGUSR1, sig_handler); 
+   // signal(SIGUSR2, sig_handler); 
+   signal(SIGUSR1, SIG_IGN); 
+  signal(SIGUSR2, SIG_IGN); 
+      //sharedMemPtr=0;  
+	// Connect to shared memory and the message queue 
+	init(shmid, sharedMemPtr);
+     //*pidPtr=getpid(); pid=*pidPtr;
+ 
+ 
+ //char *c=(char*)(sharedMemPtr);
 
-
-
-    // Connect to shared memory and the message queue 
-    init(shmid, msqid, sharedMemPtr);
+    pid = atoi((char*)sharedMemPtr);
+   printf("receiver pid is:%d\n", pid);
+ 
+ 
+	// Send the file 
+	 send(argv[1]);
 	
-    // Send the file 
-    send(argv[1]);
-	
-    // Cleanup 
-    //cleanUp(shmid, msqid, sharedMemPtr);
+	// Cleanup 
+
+	//cleanUp(shmid,   sharedMemPtr);
+ 
 
     return 0;
 }
